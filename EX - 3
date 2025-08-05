@@ -1,0 +1,70 @@
+import os
+import zipfile
+
+extract_dir = '/content/drive/MyDrive/Deep learning Ex - 3'
+augmented_dir = '/content/augmented_dataset'
+
+import numpy as np
+from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array
+
+# Data augmentation generator
+datagen = ImageDataGenerator(
+    rotation_range=30,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode='nearest'
+)
+
+# Generate and save synthetic images
+image_count = 0
+for root, dirs, files in os.walk(extract_dir):
+    for file in files:
+        if file.lower().endswith((".jpg", ".jpeg", ".png")):
+            img_path = os.path.join(root, file)
+            try:
+                img = load_img(img_path, target_size=(224, 224))
+                x = img_to_array(img)
+                x = x.reshape((1,) + x.shape)
+
+                class_folder = os.path.relpath(root, extract_dir)
+                save_path = os.path.join(augmented_dir, class_folder)
+                os.makedirs(save_path, exist_ok=True)
+
+                i = 0
+                for batch in datagen.flow(x, batch_size=1, save_to_dir=save_path,
+                                          save_prefix='aug', save_format='jpeg'):
+                    i += 1
+                    image_count += 1
+                    if i >= 5:  # 5 synthetic images per original
+                        break
+            except Exception as e:
+                print(f"Error processing {img_path}: {e}")
+
+print(f"✅ {image_count} synthetic images saved to: {augmented_dir}")
+
+import matplotlib.pyplot as plt
+from PIL import Image
+
+# Choose any class folder or general folder
+sample_class_folder = os.path.join(augmented_dir)
+
+# List all image files in the folder
+image_files = []
+for root, dirs, files in os.walk(sample_class_folder):
+    for file in files:
+        if file.lower().endswith(('.jpg', '.jpeg', '.png')):
+            image_files.append(os.path.join(root, file))
+
+# Display first 5 augmented images
+plt.figure(figsize=(12, 6))
+for i in range(5):
+    img = Image.open(image_files[i])
+    plt.subplot(1, 5, i + 1)
+    plt.imshow(img)
+    plt.axis('off')
+    plt.title(f"Image {i+1}")
+plt.suptitle("Augmented Sample Images")
+plt.show()
